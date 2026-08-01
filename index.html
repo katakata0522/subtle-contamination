@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>違和感発生装置</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg: #070708;
+      --panel: #0e0e10;
+      --border: #1c1c1f;
+      --red: #c41e3a;
+      --red-dim: #8b1528;
+      --text: #d4d4d8;
+      --text-dim: #71717a;
+      --glow: rgba(196, 30, 58, 0.15);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans JP', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      transition: background 1.5s ease;
+    }
+
+    body.contaminated {
+      background: #12080a;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .header {
+      margin-bottom: 3.5rem;
+    }
+
+    .org-name {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+
+    h1 {
+      font-weight: 300;
+      font-size: 1.6rem;
+      letter-spacing: 0.05em;
+      color: #f4f4f5;
+    }
+
+    .subtitle {
+      margin-top: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      font-weight: 300;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2.5rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red-dim), transparent);
+      opacity: 0.6;
+    }
+
+    .status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 2rem;
+      letter-spacing: 0.05em;
+    }
+
+    .status span {
+      color: #22c55e;
+    }
+
+    .status.running span {
+      color: var(--red);
+    }
+
+    .execute-btn {
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: 'IBM Plex Sans JP', sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      padding: 1.1rem 2.8rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .execute-btn:hover:not(:disabled) {
+      background: var(--glow);
+      box-shadow: 0 0 30px var(--glow);
+    }
+
+    .execute-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .execute-btn.running {
+      border-color: var(--red-dim);
+      color: var(--red-dim);
+    }
+
+    /* Contamination sequence */
+    .sequence {
+      display: none;
+      margin-top: 2.5rem;
+      text-align: left;
+    }
+
+    .sequence.active {
+      display: block;
+    }
+
+    .log-line {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-bottom: 0.7rem;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: all 0.5s ease;
+    }
+
+    .log-line.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .log-line.highlight {
+      color: #e4e4e7;
+    }
+
+    .progress-wrap {
+      margin: 2rem 0 1.5rem;
+      display: none;
+    }
+
+    .progress-wrap.show {
+      display: block;
+    }
+
+    .progress-label {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .progress-bar {
+      height: 2px;
+      background: #1c1c1f;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--red);
+      width: 0%;
+      transition: width 0.4s ease;
+      box-shadow: 0 0 12px var(--red);
+    }
+
+    .final-message {
+      display: none;
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .final-message.show {
+      display: block;
+      animation: fadeIn 1.2s ease;
+    }
+
+    .final-title {
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: #f4f4f5;
+      margin-bottom: 1.2rem;
+      letter-spacing: 0.08em;
+    }
+
+    .final-body {
+      font-size: 0.9rem;
+      line-height: 1.8;
+      color: var(--text-dim);
+      font-weight: 300;
+    }
+
+    .final-body strong {
+      color: #e4e4e7;
+      font-weight: 400;
+    }
+
+    .reset-btn {
+      margin-top: 2.5rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      padding: 0.7rem 1.6rem;
+      cursor: pointer;
+      letter-spacing: 0.1em;
+      transition: all 0.25s ease;
+      display: none;
+    }
+
+    .reset-btn.show {
+      display: inline-block;
+    }
+
+    .reset-btn:hover {
+      border-color: var(--text-dim);
+      color: var(--text);
+    }
+
+    /* Visual effects */
+    .glitch {
+      animation: glitch 0.3s ease infinite;
+    }
+
+    @keyframes glitch {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-1px, 1px); }
+      40% { transform: translate(1px, -1px); }
+      60% { transform: translate(-1px, -1px); }
+      80% { transform: translate(1px, 1px); }
+    }
+
+    .red-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(80, 10, 20, 0.18) 100%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 2s ease;
+      z-index: 10;
+    }
+
+    .red-overlay.active {
+      opacity: 1;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .footer {
+      margin-top: 3rem;
+      font-size: 0.65rem;
+      color: #3f3f46;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+  <div class="red-overlay" id="overlay"></div>
+
+  <div class="container">
+    <div class="header">
+      <div class="org-name">SHADOW PROTOCOL // UNIT-07</div>
+      <h1>違和感発生装置</h1>
+      <div class="subtitle">人類を、ほんの少しだけ「なんか違う」にさせる</div>
+    </div>
+
+    <div class="panel" id="panel">
+      <div class="status" id="status">
+        STATUS: <span>STANDBY</span>
+      </div>
+
+      <button class="execute-btn" id="executeBtn">実行する</button>
+
+      <div class="sequence" id="sequence">
+        <div class="log-line" id="log1">プロトコルを開始します...</div>
+        <div class="log-line" id="log2">対象：全人類（認知レベル）</div>
+        <div class="log-line" id="log3">強度：極めて低い（検知困難域）</div>
+        <div class="log-line highlight" id="log4">違和感を注入中...</div>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-label">CONTAMINATION LEVEL</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="final-message" id="finalMessage">
+        <div class="final-title">作戦成功</div>
+        <div class="final-body">
+          人類は今日、<strong>少しだけ「なんか違う」</strong>と感じた。<br />
+          理由はわからないまま、<br />
+          一日が終わった。
+        </div>
+      </div>
+
+      <button class="reset-btn" id="resetBtn">再実行する</button>
+    </div>
+
+    <div class="footer">
+      TRUE EVIL RESPECTS THE LAW
+    </div>
+  </div>
+
+  <script>
+    const executeBtn = document.getElementById('executeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const status = document.getElementById('status');
+    const sequence = document.getElementById('sequence');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressFill = document.getElementById('progressFill');
+    const finalMessage = document.getElementById('finalMessage');
+    const overlay = document.getElementById('overlay');
+    const panel = document.getElementById('panel');
+    const body = document.body;
+
+    const logs = ['log1', 'log2', 'log3', 'log4'];
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function runContamination() {
+      executeBtn.disabled = true;
+      executeBtn.classList.add('running');
+      executeBtn.textContent = '実行中...';
+
+      status.classList.add('running');
+      status.innerHTML = 'STATUS: <span>RUNNING</span>';
+
+      sequence.classList.add('active');
+
+      // Show logs one by one
+      for (let i = 0; i < logs.length; i++) {
+        await sleep(700);
+        document.getElementById(logs[i]).classList.add('show');
+      }
+
+      await sleep(600);
+      progressWrap.classList.add('show');
+
+      // Progress animation
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 4 + 1.5;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+        }
+        progressFill.style.width = progress + '%';
+      }, 180);
+
+      // Visual effects
+      await sleep(800);
+      overlay.classList.add('active');
+      body.classList.add('contaminated');
+      panel.classList.add('glitch');
+
+      await sleep(3200);
+      panel.classList.remove('glitch');
+
+      // Wait for progress to finish roughly
+      await sleep(1800);
+
+      finalMessage.classList.add('show');
+      resetBtn.classList.add('show');
+
+      status.innerHTML = 'STATUS: <span>COMPLETE</span>';
+      executeBtn.textContent = '完了';
+    }
+
+    function reset() {
+      executeBtn.disabled = false;
+      executeBtn.classList.remove('running');
+      executeBtn.textContent = '実行する';
+
+      status.classList.remove('running');
+      status.innerHTML = 'STATUS: <span>STANDBY</span>';
+
+      sequence.classList.remove('active');
+      logs.forEach(id => {
+        document.getElementById(id).classList.remove('show');
+      });
+
+      progressWrap.classList.remove('show');
+      progressFill.style.width = '0%';
+
+      finalMessage.classList.remove('show');
+      resetBtn.classList.remove('show');
+
+      overlay.classList.remove('active');
+      body.classList.remove('contaminated');
+      panel.classList.remove('glitch');
+    }
+
+    executeBtn.addEventListener('click', runContamination);
+    resetBtn.addEventListener('click', reset);
+  </script>
+</body>
+</html>
